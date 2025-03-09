@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LectureNotes - Intelligent Lecture Transcription</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #4F46E5;
+            --primary-dark: #4338CA;
+            --background: #F9FAFB;
+            --card: #FFFFFF;
+            --text: #1F2937;
+            --text-light: #6B7280;
+            --success: #10B981;
+            --warning: #F59E0B;
+            --error: #EF4444;
+            --border: #E5E7EB;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', sans-serif;
+            background-color: var(--background);
+            color: var(--text);
+            margin: 0;
+            padding: 0;
+            line-height: 1.5;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 1rem;
+        }
+
+        header {
+            background-color: var(--card);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            padding: 1rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-weight: 700;
+            font-size: 1.25rem;
+            color: var(--primary);
+        }
+
+        .logo i {
+            font-size: 1.5rem;
+        }
+
+        .user-menu {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .user-menu button {
+            border: none;
+            background: none;
+            cursor: pointer;
+            color: var(--text-light);
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem;
+            border-radius: 0.375rem;
+            transition: all 0.2s;
+        }
+
+        .user-menu button:hover {
+            background-color: var(--background);
+            color: var(--text);
+        }
+
+        main {
+            padding: 2rem 0;
+        }
+
+        .app-container {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 2rem;
+        }
+
+        @media (min-width: 1024px) {
+            .app-container {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        .card {
+            background-color: var(--card);
+            border-radius: 0.5rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            padding: 1.5rem;
+        }
+
+        .recording-section h2, 
+        .notes-section h2 {
+            margin-top: 0;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--text);
+            font-weight: 600;
+        }
+
+        .controls {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.375rem;
+            font-weight: 500;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            transition: all 0.2s;
+            border: none;
+        }
+
+        .btn-primary {
+            background-color: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: var(--primary-dark);
+        }
+
+        .btn-outline {
+            background-color: transparent;
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+
+        .btn-outline:hover {
+            background-color: var(--background);
+        }
+        
+        .btn-recording {
+            background-color: var(--error);
+            color: white;
+        }
+
+        .btn-recording:hover {
+            background-color: #DC2626;
+        }
+
+        .status {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            padding: 0.75rem;
+            border-radius: 0.375rem;
+            background-color: var(--background);
+        }
+
+        .status-indicator {
+            width: 0.75rem;
+            height: 0.75rem;
+            border-radius: 50%;
+            background-color: var(--text-light);
+        }
+
+        .status-indicator.active {
+            background-color: var(--error);
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.5;
+            }
+            100% {
+                opacity: 1;
+            }
+        }
+
+        .transcript-container,
+        .notes-container {
+            border: 1px solid var(--border);
+            border-radius: 0.375rem;
+            padding: 1rem;
+            height: 400px;
+            overflow-y: auto;
+            background-color: var(--background);
+        }
+
+        .transcript-text,
+        .notes-text {
+            white-space: pre-wrap;
+            line-height: 1.6;
+        }
+
+        .transcript-text {
+            color: var(--text-light);
+        }
+
+        .notes-text {
+            color: var(--text);
+        }
+
+        .notes-text h3 {
+            color: var(--primary);
+            margin-top: 1.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .notes-text ul {
+            padding-left: 1.5rem;
+        }
+
+        .notes-text li {
+            margin-bottom: 0.5rem;
+        }
+
+        .notes-actions {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 1rem;
+        }
+
+        .tab-container {
+            display: flex;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 1rem;
+        }
+
+        .tab {
+            padding: 0.75rem 1rem;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+        }
+
+        .tab.active {
+            border-bottom: 2px solid var(--primary);
+            color: var(--primary);
+            font-weight: 500;
+        }
+
+        .settings-section {
+            margin-top: 2rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border);
+        }
+
+        .settings-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1rem;
+        }
+
+        @media (min-width: 768px) {
+            .settings-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        .setting-item {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .setting-item label {
+            font-weight: 500;
+            font-size: 0.875rem;
+        }
+
+        .setting-item select,
+        .setting-item input {
+            padding: 0.5rem;
+            border-radius: 0.375rem;
+            border: 1px solid var(--border);
+            background-color: var(--card);
+        }
+
+        footer {
+            background-color: var(--card);
+            padding: 1.5rem 0;
+            margin-top: 2rem;
+            border-top: 1px solid var(--border);
+        }
+
+        .footer-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .footer-links {
+            display: flex;
+            gap: 1.5rem;
+        }
+
+        .footer-links a {
+            color: var(--text-light);
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        .footer-links a:hover {
+            color: var(--primary);
+        }
+
+        .highlight {
+            background-color: rgba(79, 70, 229, 0.1);
+            color: var(--primary);
+            padding: 0 0.25rem;
+            border-radius: 0.25rem;
+        }
+
+        .loading-indicator {
+            display: none;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--text-light);
+            margin-top: 1rem;
+        }
+
+        .spinner {
+            width: 1.25rem;
+            height: 1.25rem;
+            border: 2px solid rgba(0, 0, 0, 0.1);
+            border-left-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container header-content">
+            <div class="logo">
+                <i class="fas fa-microphone-alt"></i>
+                <span>LectureNotes</span>
+            </div>
+            <div class="user-menu">
+                <button id="theme-toggle">
+                    <i class="fas fa-moon"></i>
+                    <span>Dark Mode</span>
+                </button>
+                <button id="settings-button">
+                    <i class="fas fa-cog"></i>
+                    <span>Settings</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="container">
+        <div class="app-container">
+            <div class="recording-section">
+                <div class="card">
+                    <h2>
+                        <i class="fas fa-microphone"></i>
+                        Lecture Recording
+                    </h2>
+                    <div class="controls">
+                        <button id="start-recording" class="btn btn-primary">
+                            <i class="fas fa-play"></i>
+                            Start Recording
+                        </button>
+                        <button id="stop-recording" class="btn btn-outline" disabled>
+                            <i class="fas fa-stop"></i>
+                            Stop
+                        </button>
+                    </div>
+                    <div class="status">
+                        <div id="status-indicator" class="status-indicator"></div>
+                        <span id="status-text">Waiting to start...</span>
+                    </div>
+                    <div class="tab-container">
+                        <div class="tab active" data-tab="live">Live Transcription</div>
+                        <div class="tab" data-tab="history">History</div>
+                    </div>
+                    <div class="transcript-container">
+                        <div id="transcript-text" class="transcript-text">
+                            Your lecture transcription will appear here as you speak...
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="notes-section">
+                <div class="card">
+                    <h2>
+                        <i class="fas fa-book"></i>
+                        Smart Notes
+                    </h2>
+                    <div class="tab-container">
+                        <div class="tab active" data-tab="formatted">Formatted</div>
+                        <div class="tab" data-tab="outline">Outline</div>
+                        <div class="tab" data-tab="summary">Summary</div>
+                    </div>
+                    <div class="notes-container">
+                        <div id="notes-text" class="notes-text">
+                            <p>When you start recording, intelligent notes will be generated here based on the lecture content.</p>
+                            <p>The AI will:</p>
+                            <ul>
+                                <li>Organize content into logical sections</li>
+                                <li>Extract key points and concepts</li>
+                                <li>Format with headings and bullet points</li>
+                                <li>Highlight important definitions and formulas</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="loading-indicator" id="loading-indicator">
+                        <div class="spinner"></div>
+                        <span>Generating smart notes...</span>
+                    </div>
+                    <div class="notes-actions">
+                        <button id="regenerate" class="btn btn-outline">
+                            <i class="fas fa-redo"></i>
+                            Regenerate
+                        </button>
+                        <button id="download-notes" class="btn btn-primary">
+                            <i class="fas fa-download"></i>
+                            Download Notes
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="settings-section">
+            <div class="card">
+                <h2>
+                    <i class="fas fa-sliders-h"></i>
+                    Settings
+                </h2>
+                <div class="settings-grid">
+                    <div class="setting-item">
+                        <label for="language-select">Speech Recognition Language</label>
+                        <select id="language-select">
+                            <option value="en-US">English (US)</option>
+                            <option value="en-GB">English (UK)</option>
+                            <option value="es-ES">Spanish</option>
+                            <option value="fr-FR">French</option>
+                            <option value="de-DE">German</option>
+                            <option value="zh-CN">Chinese (Simplified)</option>
+                            <option value="ja-JP">Japanese</option>
+                        </select>
+                    </div>
+                    <div class="setting-item">
+                        <label for="notes-style">Notes Style</label>
+                        <select id="notes-style">
+                            <option value="comprehensive">Comprehensive</option>
+                            <option value="concise">Concise</option>
+                            <option value="bullet-points">Bullet Points Only</option>
+                            <option value="question-answer">Question & Answer</option>
+                        </select>
+                    </div>
+                    <div class="setting-item">
+                        <label for="highlight-terms">Highlight Key Terms</label>
+                        <input type="checkbox" id="highlight-terms" checked>
+                    </div>
+                    <div class="setting-item">
+                        <label for="auto-generate">Generate Notes Automatically</label>
+                        <input type="checkbox" id="auto-generate" checked>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <div class="container footer-content">
+            <div>
+                <p>&copy; 2025 LectureNotes. All rights reserved.</p>
+            </div>
+            <div class="footer-links">
+                <a href="#">About</a>
+                <a href="#">Privacy</a>
+                <a href="#">Terms</a>
+                <a href="#">Help</a>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // DOM Elements
+        const startRecordingBtn = document.getElementById('start-recording');
+        const stopRecordingBtn = document.getElementById('stop-recording');
+        const statusIndicator = document.getElementById('status-indicator');
+        const statusText = document.getElementById('status-text');
+        const transcriptText = document.getElementById('transcript-text');
+        const notesText = document.getElementById('notes-text');
+        const loadingIndicator = document.getElementById('loading-indicator');
+        const downloadNotesBtn = document.getElementById('download-notes');
+        const regenerateBtn = document.getElementById('regenerate');
+        const tabs = document.querySelectorAll('.tab');
+        const themeToggle = document.getElementById('theme-toggle');
+
+        // Variables for speech recognition
+        let recognition;
+        let isRecording = false;
+        let transcript = '';
+
+        // Check if the browser supports the Web Speech API
+        if ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window) {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            recognition = new SpeechRecognition();
+            recognition.continuous = true;
+            recognition.interimResults = true;
+            recognition.lang = 'en-US';
+
+            recognition.onstart = function() {
+                isRecording = true;
+                statusIndicator.classList.add('active');
+                statusText.textContent = 'Recording...';
+                transcriptText.textContent = 'Listening...';
+                startRecordingBtn.classList.add('btn-recording');
+                startRecordingBtn.innerHTML = '<i class="fas fa-microphone"></i> Recording...';
+                stopRecordingBtn.disabled = false;
+            };
+
+            recognition.onresult = function(event) {
+                let interimTranscript = '';
+                let finalTranscript = '';
+
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                    const result = event.results[i];
+                    if (result.isFinal) {
+                        finalTranscript += result[0].transcript + ' ';
+                    } else {
+                        interimTranscript += result[0].transcript;
+                    }
+                }
+
+                transcript += finalTranscript;
+                transcriptText.innerHTML = transcript + '<span style="color: #9CA3AF;">' + interimTranscript + '</span>';
+
+                // Generate notes after a certain amount of transcript is collected
+                if (finalTranscript && document.getElementById('auto-generate').checked) {
+                    generateNotes();
+                }
+            };
+
+            recognition.onerror = function(event) {
+                console.error('Speech recognition error:', event.error);
+                statusText.textContent = 'Error: ' + event.error;
+                stopRecording();
+            };
+
+            recognition.onend = function() {
+                if (isRecording) {
+                    // If still recording, restart recognition (to handle timeout)
+                    recognition.start();
+                }
+            };
+        } else {
+            // Browser doesn't support speech recognition
+            startRecordingBtn.disabled = true;
+            statusText.textContent = 'Speech recognition not supported in this browser.';
+            transcriptText.textContent = 'Your browser does not support the Web Speech API. Please try using Chrome.';
+        }
+
+        // Start recording
+        startRecordingBtn.addEventListener('click', function() {
+            if (!isRecording) {
+                try {
+                    recognition.start();
+                } catch (error) {
+                    console.error('Error starting recognition:', error);
+                }
+            }
+        });
+
+        // Stop recording
+        stopRecordingBtn.addEventListener('click', stopRecording);
+
+        function stopRecording() {
+            if (isRecording) {
+                recognition.stop();
+                isRecording = false;
+                statusIndicator.classList.remove('active');
+                statusText.textContent = 'Recording stopped';
+                startRecordingBtn.classList.remove('btn-recording');
+                startRecordingBtn.innerHTML = '<i class="fas fa-play"></i> Start Recording';
+                stopRecordingBtn.disabled = true;
+
+                // Generate final notes
+                generateNotes(true);
+            }
+        }
+
+        // Generate notes from transcript
+        function generateNotes(isFinal = false) {
+            if (transcript.trim().length < 20 && !isFinal) return;
+
+            loadingIndicator.style.display = 'flex';
+
+            // Simulating AI processing with a timeout
+            setTimeout(() => {
+                let highlightTerms = document.getElementById('highlight-terms').checked;
+                let notesStyle = document.getElementById('notes-style').value;
+                
+                // This would be replaced with actual AI processing in a real app
+                const formattedNotes = processTranscriptToNotes(transcript, notesStyle, highlightTerms);
+                notesText.innerHTML = formattedNotes;
+                loadingIndicator.style.display = 'none';
+            }, 1500);
+        }
+
+        // Process transcript to formatted notes (simplified simulation)
+        function processTranscriptToNotes(text, style, highlight) {
+            if (!text || text.trim() === '') {
+                return '<p>Start recording to generate notes.</p>';
+            }
+
+            // This is a simplistic simulation. In a real app, this would be handled by an AI service
+            
+            // Extract a fake title from the first sentence
+            const firstSentenceEnd = text.indexOf('.');
+            let title = text.substring(0, firstSentenceEnd > 30 ? 30 : firstSentenceEnd).trim();
+            if (title.length < 10) title = "Lecture Notes";
+            
+            let notes = '';
+            
+            // Create a basic structure based on notes style
+            switch (style) {
+                case 'concise':
+                    notes = `<h3>${title}</h3>
+                    <p>Key points:</p>
+                    <ul>
+                        <li>The lecture discusses ${title.toLowerCase()} and its implications.</li>
+                        <li>Several important concepts are introduced including theoretical frameworks.</li>
+                        <li>Methods and applications are explored in detail.</li>
+                    </ul>`;
+                    break;
+                    
+                case 'bullet-points':
+                    notes = `<h3>${title}</h3>
+                    <ul>
+                        <li>Introduction to the topic</li>
+                        <li>Theoretical background</li>
+                        <li>Main concepts:
+                            <ul>
+                                <li>Primary elements</li>
+                                <li>Secondary factors</li>
+                                <li>Relationships between components</li>
+                            </ul>
+                        </li>
+                        <li>Applications and examples</li>
+                        <li>Summary of key takeaways</li>
+                    </ul>`;
+                    break;
+                    
+                case 'question-answer':
+                    notes = `<h3>${title}</h3>
+                    <p><strong>Q: What is the main topic of the lecture?</strong></p>
+                    <p>A: The lecture focuses on ${title.toLowerCase()}.</p>
+                    <p><strong>Q: What are the key components discussed?</strong></p>
+                    <p>A: The lecture covers theoretical frameworks, methodologies, and practical applications.</p>
+                    <p><strong>Q: How does this relate to the broader field?</strong></p>
+                    <p>A: This topic connects to larger concepts within the discipline and has real-world implications.</p>`;
+                    break;
+                    
+                default: // comprehensive
+                    notes = `<h3>${title}</h3>
+                    <p>The lecture begins with an introduction to ${title.toLowerCase()}, establishing the context and importance of the topic. The speaker presents several key concepts that form the foundation of the discussion.</p>
+                    <h4>Key Concepts</h4>
+                    <ul>
+                        <li>Theoretical framework and background</li>
+                        <li>Methodological approaches</li>
+                        <li>Practical applications</li>
+                    </ul>
+                    <h4>Important Relationships</h4>
+                    <p>The relationships between these concepts are explored, with emphasis on how they interact in various contexts.</p>
+                    <h4>Examples & Applications</h4>
+                    <p>Several examples are provided to illustrate the practical implementation of these ideas.</p>
+                    <h4>Conclusion</h4>
+                    <p>The lecture concludes by summarizing the key points and suggesting future directions for exploration.</p>`;
+            }
+            
+            // Add highlighting if enabled
+            if (highlight) {
+                // Identify some "key terms" from the text (this is simplified)
+                const potentialTerms = ['theory', 'concept', 'method', 'analysis', 'research', 'data', 'model', 
+                                        'framework', 'structure', 'function', 'process', 'system', 'development',
+                                        'application', 'example'];
+                
+                // Find words that appear in both the transcript and our potential terms list
+                const termsToHighlight = potentialTerms.filter(term => 
+                    text.toLowerCase().includes(term.toLowerCase())
+                );
+                
+                // Highlight these terms in the notes
+                termsToHighlight.forEach(term => {
+                    const regex = new RegExp(`\\b${term}\\b`, 'gi');
+                    notes = notes.replace(regex, `<span class="highlight">$&</span>`);
+                });
+            }
+            
+            return notes;
+        }
+
+        // Download notes
+        downloadNotesBtn.addEventListener('click', function() {
+            const notesContent = notesText.innerHTML;
+            const blob = new Blob([`<html><head><title>Lecture Notes</title><style>
+                body { font-family: Arial, sans-serif; line-height: 1.6; max-width: 800px; margin: 0 auto; padding: 20px; }
+                h3 { color: #4F46E5; }
+                .highlight { background-color: #EEF2FF; color: #4F46E5; padding: 0 3px; border-radius: 3px; }
+            </style></head><body>${notesContent}</body></html>`], { type: 'text/html' });
+            
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'lecture-notes.html';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        });
+
+        // Regenerate notes
+        regenerateBtn.addEventListener('click', function() {
+            if (transcript) {
+                generateNotes(true);
+            }
+        });
+
+        // Tab switching
+        tabs.forEach(tab => {
+            tab.addEventListener('click', function() {
+                const tabContainer = this.closest('.tab-container');
+                const activeTab = tabContainer.querySelector('.active');
+                activeTab.classList.remove('active');
+                this.classList.add('active');
+                
+                // Here you would typically switch the content based on the selected tab
+                // For this demo, we'll just keep it simple
+            });
+        });
+
+        // Dark mode toggle
+        themeToggle.addEventListener('click', function() {
+            document.body.classList.toggle('dark-mode');
+            const icon = themeToggle.querySelector('i');
+            if (icon.classList.contains('fa-moon')) {
+                icon.classList.remove('fa-moon');
+                icon.classList.add('fa-sun');
+                themeToggle.querySelector('span').textContent = 'Light Mode';
+            } else {
+                icon.classList.remove('fa-sun');
+                icon.classList.add('fa-moon');
+                themeToggle.querySelector('span').textContent = 'Dark Mode';
+            }
+        });
+    </script>
+</body>
+</html>
