@@ -19,6 +19,17 @@
             --border: #E5E7EB;
         }
 
+        /* Dark mode variables */
+        .dark-mode {
+            --primary: #6366F1;
+            --primary-dark: #4F46E5;
+            --background: #111827;
+            --card: #1F2937;
+            --text: #F9FAFB;
+            --text-light: #D1D5DB;
+            --border: #374151;
+        }
+
         body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', sans-serif;
             background-color: var(--background);
@@ -298,6 +309,7 @@
             border-radius: 0.375rem;
             border: 1px solid var(--border);
             background-color: var(--card);
+            color: var(--text);
         }
 
         footer {
@@ -524,75 +536,85 @@
         const regenerateBtn = document.getElementById('regenerate');
         const tabs = document.querySelectorAll('.tab');
         const themeToggle = document.getElementById('theme-toggle');
+        const settingsButton = document.getElementById('settings-button');
 
         // Variables for speech recognition
-        let recognition;
+        let recognition = null;
         let isRecording = false;
         let transcript = '';
 
         // Check if the browser supports the Web Speech API
-        if ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window) {
-            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-            recognition = new SpeechRecognition();
-            recognition.continuous = true;
-            recognition.interimResults = true;
-            recognition.lang = 'en-US';
+        function initSpeechRecognition() {
+            if ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window) {
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                recognition = new SpeechRecognition();
+                recognition.continuous = true;
+                recognition.interimResults = true;
+                recognition.lang = document.getElementById('language-select').value;
 
-            recognition.onstart = function() {
-                isRecording = true;
-                statusIndicator.classList.add('active');
-                statusText.textContent = 'Recording...';
-                transcriptText.textContent = 'Listening...';
-                startRecordingBtn.classList.add('btn-recording');
-                startRecordingBtn.innerHTML = '<i class="fas fa-microphone"></i> Recording...';
-                stopRecordingBtn.disabled = false;
-            };
+                recognition.onstart = function() {
+                    isRecording = true;
+                    statusIndicator.classList.add('active');
+                    statusText.textContent = 'Recording...';
+                    transcriptText.textContent = 'Listening...';
+                    startRecordingBtn.classList.add('btn-recording');
+                    startRecordingBtn.innerHTML = '<i class="fas fa-microphone"></i> Recording...';
+                    stopRecordingBtn.disabled = false;
+                };
 
-            recognition.onresult = function(event) {
-                let interimTranscript = '';
-                let finalTranscript = '';
+                recognition.onresult = function(event) {
+                    let interimTranscript = '';
+                    let finalTranscript = '';
 
-                for (let i = event.resultIndex; i < event.results.length; i++) {
-                    const result = event.results[i];
-                    if (result.isFinal) {
-                        finalTranscript += result[0].transcript + ' ';
-                    } else {
-                        interimTranscript += result[0].transcript;
+                    for (let i = event.resultIndex; i < event.results.length; i++) {
+                        const result = event.results[i];
+                        if (result.isFinal) {
+                            finalTranscript += result[0].transcript + ' ';
+                        } else {
+                            interimTranscript += result[0].transcript;
+                        }
                     }
-                }
 
-                transcript += finalTranscript;
-                transcriptText.innerHTML = transcript + '<span style="color: #9CA3AF;">' + interimTranscript + '</span>';
+                    transcript += finalTranscript;
+                    transcriptText.innerHTML = transcript + '<span style="color: var(--text-light);">' + interimTranscript + '</span>';
 
-                // Generate notes after a certain amount of transcript is collected
-                if (finalTranscript && document.getElementById('auto-generate').checked) {
-                    generateNotes();
-                }
-            };
+                    // Generate notes after a certain amount of transcript is collected
+                    if (finalTranscript && document.getElementById('auto-generate').checked) {
+                        generateNotes();
+                    }
+                };
 
-            recognition.onerror = function(event) {
-                console.error('Speech recognition error:', event.error);
-                statusText.textContent = 'Error: ' + event.error;
-                stopRecording();
-            };
+                recognition.onerror = function(event) {
+                    console.error('Speech recognition error:', event.error);
+                    statusText.textContent = 'Error: ' + event.error;
+                    stopRecording();
+                };
 
-            recognition.onend = function() {
-                if (isRecording) {
-                    // If still recording, restart recognition (to handle timeout)
-                    recognition.start();
-                }
-            };
-        } else {
-            // Browser doesn't support speech recognition
-            startRecordingBtn.disabled = true;
-            statusText.textContent = 'Speech recognition not supported in this browser.';
-            transcriptText.textContent = 'Your browser does not support the Web Speech API. Please try using Chrome.';
+                recognition.onend = function() {
+                    if (isRecording) {
+                        // If still recording, restart recognition (to handle timeout)
+                        recognition.start();
+                    }
+                };
+                
+                return true;
+            } else {
+                // Browser doesn't support speech recognition
+                startRecordingBtn.disabled = true;
+                statusText.textContent = 'Speech recognition not supported in this browser.';
+                transcriptText.textContent = 'Your browser does not support the Web Speech API. Please try using Chrome.';
+                return false;
+            }
         }
+
+        // Initialize speech recognition if available
+        const speechRecognitionAvailable = initSpeechRecognition();
 
         // Start recording
         startRecordingBtn.addEventListener('click', function() {
-            if (!isRecording) {
+            if (!isRecording && speechRecognitionAvailable) {
                 try {
+                    recognition.lang = document.getElementById('language-select').value;
                     recognition.start();
                 } catch (error) {
                     console.error('Error starting recognition:', error);
@@ -604,7 +626,7 @@
         stopRecordingBtn.addEventListener('click', stopRecording);
 
         function stopRecording() {
-            if (isRecording) {
+            if (isRecording && recognition) {
                 recognition.stop();
                 isRecording = false;
                 statusIndicator.classList.remove('active');
@@ -646,7 +668,9 @@
             
             // Extract a fake title from the first sentence
             const firstSentenceEnd = text.indexOf('.');
-            let title = text.substring(0, firstSentenceEnd > 30 ? 30 : firstSentenceEnd).trim();
+            let title = firstSentenceEnd > 0 ? 
+                        text.substring(0, firstSentenceEnd > 30 ? 30 : firstSentenceEnd).trim() : 
+                        "Lecture Notes";
             if (title.length < 10) title = "Lecture Notes";
             
             let notes = '';
@@ -768,6 +792,12 @@
             });
         });
 
+        // Show/hide settings section
+        settingsButton.addEventListener('click', function() {
+            const settingsSection = document.querySelector('.settings-section');
+            settingsSection.style.display = settingsSection.style.display === 'none' ? 'block' : 'none';
+        });
+
         // Dark mode toggle
         themeToggle.addEventListener('click', function() {
             document.body.classList.toggle('dark-mode');
@@ -782,6 +812,16 @@
                 themeToggle.querySelector('span').textContent = 'Dark Mode';
             }
         });
+
+        // Language select change
+        document.getElementById('language-select').addEventListener('change', function() {
+            if (recognition) {
+                recognition.lang = this.value;
+            }
+        });
+
+        // Initialize settings display
+        document.querySelector('.settings-section').style.display = 'none';
     </script>
 </body>
 </html>
