@@ -1558,3 +1558,111 @@
                 // For this demo, we'll just keep it simple
             });
         });
+
+        // Mode switching
+        modeBtns.forEach(btn => {
+            btn.addEventListener('click', function() {
+                const activeBtn = document.querySelector('.mode-btn.active');
+                activeBtn.classList.remove('active');
+                this.classList.add('active');
+                
+                currentMode = this.getAttribute('data-mode');
+                
+                // Update UI based on selected mode
+                updateSpeakerUI();
+                
+                // Update notes placeholder to reflect the selected mode
+                if (!transcript || transcript.trim() === '') {
+                    notesText.innerHTML = `
+                        <p>When you start recording, intelligent notes will be generated here based on the content.</p>
+                        <p>You're in <strong>${currentMode} mode</strong>. Notes will be organized accordingly.</p>
+                    `;
+                }
+            });
+        });
+
+        // Show/hide settings section
+        settingsButton.addEventListener('click', function() {
+            const settingsSection = document.querySelector('.settings-section');
+            settingsSection.style.display = settingsSection.style.display === 'none' ? 'block' : 'none';
+        });
+
+        // Dark mode toggle
+        themeToggle.addEventListener('click', function() {
+            document.body.classList.toggle('dark-mode');
+            const icon = themeToggle.querySelector('i');
+            if (icon.classList.contains('fa-moon')) {
+                icon.classList.remove('fa-moon');
+                icon.classList.add('fa-sun');
+                themeToggle.querySelector('span').textContent = 'Light Mode';
+            } else {
+                icon.classList.remove('fa-sun');
+                icon.classList.add('fa-moon');
+                themeToggle.querySelector('span').textContent = 'Dark Mode';
+            }
+        });
+
+        // Speaker setup button
+        speakerSetupBtn.addEventListener('click', function() {
+            enrollmentModal.style.display = 'block';
+        });
+
+        // Close modal
+        closeModalBtn.addEventListener('click', function() {
+            enrollmentModal.style.display = 'none';
+        });
+
+        // Click outside modal to close
+        window.addEventListener('click', function(event) {
+            if (event.target === enrollmentModal) {
+                enrollmentModal.style.display = 'none';
+            }
+        });
+
+        // Start recording button
+        startRecordingBtn.addEventListener('click', function() {
+            if (!isRecording) {
+                startRecording();
+            }
+        });
+
+        // Stop recording button
+        stopRecordingBtn.addEventListener('click', stopRecording);
+
+        // Start enrollment button
+        startEnrollmentBtn.addEventListener('click', startEnrollment);
+
+        // Stop enrollment button
+        stopEnrollmentBtn.addEventListener('click', stopEnrollment);
+
+        // Save profile button
+        saveProfileBtn.addEventListener('click', saveProfile);
+
+        // Language select change
+        document.getElementById('language-select').addEventListener('change', function() {
+            if (recognition) {
+                recognition.lang = this.value;
+            }
+        });
+
+        // Initialize on load
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize settings display
+            document.querySelector('.settings-section').style.display = 'none';
+            
+            // Hide speaker section initially
+            speakerSection.style.display = 'none';
+            
+            // Initialize audio recording capabilities
+            const recordingAvailable = initializeAudioRecording();
+            if (!recordingAvailable) {
+                // If no recording methods are available, disable the start button
+                startRecordingBtn.disabled = true;
+            }
+            
+            // Initialize speaker recognition
+            initSpeakerRecognition();
+        });
+    </script>
+</body>
+</html>
