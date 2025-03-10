@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>LectureNotes - Intelligent Lecture Transcription</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.4.7/peerjs.min.js"></script>
     <style>
         :root {
             --primary: #4F46E5;
@@ -122,7 +124,8 @@
         }
 
         .recording-section h2, 
-        .notes-section h2 {
+        .notes-section h2,
+        .speaker-section h2 {
             margin-top: 0;
             display: flex;
             align-items: center;
@@ -135,6 +138,7 @@
             display: flex;
             gap: 1rem;
             margin-bottom: 1rem;
+            flex-wrap: wrap;
         }
 
         .btn {
@@ -178,6 +182,24 @@
             background-color: #DC2626;
         }
 
+        .btn-success {
+            background-color: var(--success);
+            color: white;
+        }
+
+        .btn-success:hover {
+            background-color: #059669;
+        }
+
+        .btn-warning {
+            background-color: var(--warning);
+            color: white;
+        }
+
+        .btn-warning:hover {
+            background-color: #D97706;
+        }
+
         .status {
             display: flex;
             align-items: center;
@@ -213,7 +235,8 @@
         }
 
         .transcript-container,
-        .notes-container {
+        .notes-container,
+        .speaker-container {
             border: 1px solid var(--border);
             border-radius: 0.375rem;
             padding: 1rem;
@@ -260,6 +283,7 @@
             display: flex;
             border-bottom: 1px solid var(--border);
             margin-bottom: 1rem;
+            flex-wrap: wrap;
         }
 
         .tab {
@@ -366,9 +390,159 @@
             animation: spin 1s linear infinite;
         }
 
+        .mode-selector {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .mode-btn {
+            flex: 1;
+            min-width: 120px;
+            padding: 0.75rem;
+            border: 1px solid var(--border);
+            border-radius: 0.375rem;
+            background-color: var(--card);
+            color: var(--text);
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.2s;
+        }
+
+        .mode-btn.active {
+            background-color: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .speaker-list {
+            list-style-type: none;
+            padding: 0;
+            margin: 0 0 1rem 0;
+        }
+
+        .speaker-item {
+            display: flex;
+            align-items: center;
+            padding: 0.75rem;
+            border-radius: 0.375rem;
+            background-color: var(--background);
+            margin-bottom: 0.5rem;
+            border: 1px solid var(--border);
+        }
+
+        .speaker-avatar {
+            width: 2rem;
+            height: 2rem;
+            border-radius: 50%;
+            background-color: var(--primary);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin-right: 0.75rem;
+        }
+
+        .speaker-text {
+            flex: 1;
+        }
+
+        .speaker-name {
+            font-weight: 500;
+            margin-bottom: 0.25rem;
+        }
+
+        .speaker-segment {
+            color: var(--text-light);
+            font-size: 0.875rem;
+        }
+
+        .profile-container {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 100;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.4);
+        }
+
+        .modal-content {
+            background-color: var(--card);
+            margin: 10% auto;
+            padding: 2rem;
+            border-radius: 0.5rem;
+            max-width: 600px;
+            width: 90%;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .close {
+            color: var(--text-light);
+            float: right;
+            font-size: 1.5rem;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .close:hover {
+            color: var(--text);
+        }
+
+        .modal-title {
+            margin-top: 0;
+            color: var(--primary);
+        }
+
+        .enrollment-progress {
+            width: 100%;
+            height: 0.5rem;
+            background-color: var(--background);
+            border-radius: 0.25rem;
+            margin: 1rem 0;
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background-color: var(--primary);
+            width: 0%;
+            transition: width 0.3s;
+        }
+
+        .enrollment-status {
+            font-size: 0.875rem;
+            color: var(--text-light);
+        }
+
         @keyframes spin {
             to {
                 transform: rotate(360deg);
+            }
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 640px) {
+            .controls {
+                flex-direction: column;
+            }
+            
+            .btn {
+                width: 100%;
+            }
+            
+            .user-menu button span {
+                display: none;
             }
         }
     </style>
@@ -394,12 +568,31 @@
     </header>
 
     <main class="container">
+        <!-- Mode Selector -->
+        <div class="card" style="margin-bottom: 2rem;">
+            <h2>
+                <i class="fas fa-list-ul"></i>
+                Select Recording Mode
+            </h2>
+            <div class="mode-selector">
+                <div class="mode-btn active" data-mode="lecture">
+                    <i class="fas fa-chalkboard-teacher"></i> Lecture
+                </div>
+                <div class="mode-btn" data-mode="discussion">
+                    <i class="fas fa-comments"></i> Discussion
+                </div>
+                <div class="mode-btn" data-mode="meeting">
+                    <i class="fas fa-users"></i> Meeting
+                </div>
+            </div>
+        </div>
+
         <div class="app-container">
             <div class="recording-section">
                 <div class="card">
                     <h2>
                         <i class="fas fa-microphone"></i>
-                        Lecture Recording
+                        Audio Recording
                     </h2>
                     <div class="controls">
                         <button id="start-recording" class="btn btn-primary">
@@ -409,6 +602,10 @@
                         <button id="stop-recording" class="btn btn-outline" disabled>
                             <i class="fas fa-stop"></i>
                             Stop
+                        </button>
+                        <button id="speaker-setup" class="btn btn-outline">
+                            <i class="fas fa-user-plus"></i>
+                            Speaker Setup
                         </button>
                     </div>
                     <div class="status">
@@ -440,13 +637,12 @@
                     </div>
                     <div class="notes-container">
                         <div id="notes-text" class="notes-text">
-                            <p>When you start recording, intelligent notes will be generated here based on the lecture content.</p>
-                            <p>The AI will:</p>
+                            <p>When you start recording, intelligent notes will be generated here based on the content.</p>
+                            <p>The mode you've selected will affect how the notes are organized:</p>
                             <ul>
-                                <li>Organize content into logical sections</li>
-                                <li>Extract key points and concepts</li>
-                                <li>Format with headings and bullet points</li>
-                                <li>Highlight important definitions and formulas</li>
+                                <li><strong>Lecture mode:</strong> Organize content into logical sections with key points</li>
+                                <li><strong>Discussion mode:</strong> Capture different viewpoints and questions raised</li>
+                                <li><strong>Meeting mode:</strong> Structure by agenda items, decisions, and action items</li>
                             </ul>
                         </div>
                     </div>
@@ -468,7 +664,22 @@
             </div>
         </div>
 
-        <div class="settings-section">
+        <!-- Speaker identification section - visible in discussion and meeting modes -->
+        <div id="speaker-section" class="card" style="margin-top: 2rem; display: none;">
+            <h2>
+                <i class="fas fa-users"></i>
+                Speaker Identification
+            </h2>
+            <p>The application will identify different speakers in the recording.</p>
+            
+            <div class="speaker-container">
+                <ul id="speaker-list" class="speaker-list">
+                    <!-- Speaker segments will be added here dynamically -->
+                </ul>
+            </div>
+        </div>
+
+        <div class="settings-section" style="display: none;">
             <div class="card">
                 <h2>
                     <i class="fas fa-sliders-h"></i>
@@ -504,10 +715,66 @@
                         <label for="auto-generate">Generate Notes Automatically</label>
                         <input type="checkbox" id="auto-generate" checked>
                     </div>
+                    <div class="setting-item">
+                        <label for="transcription-method">Transcription Method</label>
+                        <select id="transcription-method">
+                            <option value="webspeech">Web Speech API (Chrome recommended)</option>
+                            <option value="recorder">Audio Recording + Server Processing</option>
+                            <option value="hybrid">Hybrid (Try Web Speech first)</option>
+                        </select>
+                    </div>
+                    <div class="setting-item">
+                        <label for="speaker-identification">Enable Speaker Identification</label>
+                        <input type="checkbox" id="speaker-identification" checked>
+                    </div>
                 </div>
             </div>
         </div>
     </main>
+
+    <!-- Speaker enrollment modal -->
+    <div id="enrollment-modal" class="modal">
+        <div class="modal-content">
+            <span class="close" id="close-modal">&times;</span>
+            <h2 class="modal-title">Speaker Enrollment</h2>
+            <p>To identify speakers, we need to enroll their voices. Please have each speaker say a few sentences.</p>
+            
+            <div class="profile-container">
+                <div class="setting-item">
+                    <label for="speaker-name">Speaker Name</label>
+                    <input type="text" id="speaker-name" placeholder="Enter speaker name">
+                </div>
+                
+                <div class="enrollment-progress">
+                    <div class="progress-bar" id="enrollment-progress-bar"></div>
+                </div>
+                <div class="enrollment-status" id="enrollment-status">Ready to enroll</div>
+                
+                <div class="controls">
+                    <button id="start-enrollment" class="btn btn-primary">
+                        <i class="fas fa-microphone"></i>
+                        Start Enrollment
+                    </button>
+                    <button id="stop-enrollment" class="btn btn-outline" disabled>
+                        <i class="fas fa-stop"></i>
+                        Stop
+                    </button>
+                </div>
+                
+                <button id="save-profile" class="btn btn-success" disabled>
+                    <i class="fas fa-save"></i>
+                    Save Speaker Profile
+                </button>
+            </div>
+            
+            <div id="enrolled-speakers" style="margin-top: 1rem;">
+                <h3>Enrolled Speakers</h3>
+                <ul id="enrolled-speakers-list" class="speaker-list">
+                    <!-- Enrolled speakers will be listed here -->
+                </ul>
+            </div>
+        </div>
+    </div>
 
     <footer>
         <div class="container footer-content">
@@ -523,6 +790,10 @@
         </div>
     </footer>
 
+    <!-- Add PicoVoice Eagle for speaker recognition -->
+    <script src="https://cdn.jsdelivr.net/npm/@picovoice/eagle-web@latest/dist/iife/index.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@picovoice/web-voice-processor@latest/dist/iife/index.js"></script>
+
     <script>
         // DOM Elements
         const startRecordingBtn = document.getElementById('start-recording');
@@ -537,13 +808,86 @@
         const tabs = document.querySelectorAll('.tab');
         const themeToggle = document.getElementById('theme-toggle');
         const settingsButton = document.getElementById('settings-button');
+        const modeBtns = document.querySelectorAll('.mode-btn');
+        const speakerSetupBtn = document.getElementById('speaker-setup');
+        const enrollmentModal = document.getElementById('enrollment-modal');
+        const closeModalBtn = document.getElementById('close-modal');
+        const startEnrollmentBtn = document.getElementById('start-enrollment');
+        const stopEnrollmentBtn = document.getElementById('stop-enrollment');
+        const saveProfileBtn = document.getElementById('save-profile');
+        const speakerSection = document.getElementById('speaker-section');
+        const speakerList = document.getElementById('speaker-list');
+        const enrolledSpeakersList = document.getElementById('enrolled-speakers-list');
+        const enrollmentProgress = document.getElementById('enrollment-progress-bar');
+        const enrollmentStatus = document.getElementById('enrollment-status');
 
-        // Variables for speech recognition
+        // Variables for speech recognition and recording
         let recognition = null;
         let isRecording = false;
         let transcript = '';
+        let currentMode = 'lecture';
+        let audioContext = null;
+        let recorder = null;
+        let audioChunks = [];
+        let audioStream = null;
+        let speakerProfiles = [];
+        let currentEnrollmentPercentage = 0;
+        let eagleProfiler = null;
+        let eagle = null;
+        let isEnrolling = false;
 
-        // Check if the browser supports the Web Speech API
+        // Initialize AudioContext
+        function initAudioContext() {
+            if (!audioContext) {
+                try {
+                    window.AudioContext = window.AudioContext || window.webkitAudioContext;
+                    audioContext = new AudioContext();
+                } catch (e) {
+                    console.error('Web Audio API is not supported in this browser', e);
+                }
+            }
+        }
+
+        // Check and initialize available audio recording methods
+        function initializeAudioRecording() {
+            // Initialize AudioContext for non-SpeechRecognition methods
+            initAudioContext();
+
+            // Check if Web Speech API is available
+            const webSpeechAvailable = 'SpeechRecognition' in window || 'webkitSpeechRecognition' in window;
+            
+            // Check if MediaRecorder is available (fallback method)
+            const mediaRecorderAvailable = 'MediaRecorder' in window;
+            
+            // Update the transcription method dropdown based on availability
+            const transcriptionMethod = document.getElementById('transcription-method');
+            transcriptionMethod.innerHTML = '';
+            
+            if (webSpeechAvailable) {
+                transcriptionMethod.appendChild(new Option('Web Speech API (Chrome recommended)', 'webspeech'));
+            }
+            
+            if (mediaRecorderAvailable) {
+                transcriptionMethod.appendChild(new Option('Audio Recording + Server Processing', 'recorder'));
+            }
+            
+            if (webSpeechAvailable && mediaRecorderAvailable) {
+                transcriptionMethod.appendChild(new Option('Hybrid (Try Web Speech first)', 'hybrid'));
+                transcriptionMethod.value = 'hybrid'; // Set hybrid as default when both are available
+            }
+            
+            if (!webSpeechAvailable && !mediaRecorderAvailable) {
+                // Neither method available
+                startRecordingBtn.disabled = true;
+                statusText.textContent = 'Speech recognition not supported in this browser.';
+                transcriptText.textContent = 'Your browser does not support any compatible audio recording methods.';
+                return false;
+            }
+            
+            return true;
+        }
+
+        // Initialize Web Speech API if available
         function initSpeechRecognition() {
             if ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window) {
                 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -554,12 +898,7 @@
 
                 recognition.onstart = function() {
                     isRecording = true;
-                    statusIndicator.classList.add('active');
-                    statusText.textContent = 'Recording...';
-                    transcriptText.textContent = 'Listening...';
-                    startRecordingBtn.classList.add('btn-recording');
-                    startRecordingBtn.innerHTML = '<i class="fas fa-microphone"></i> Recording...';
-                    stopRecordingBtn.disabled = false;
+                    updateRecordingUI(true);
                 };
 
                 recognition.onresult = function(event) {
@@ -582,12 +921,25 @@
                     if (finalTranscript && document.getElementById('auto-generate').checked) {
                         generateNotes();
                     }
+
+                    // If speaker identification is enabled and in discussion or meeting mode
+                    if (document.getElementById('speaker-identification').checked && 
+                        (currentMode === 'discussion' || currentMode === 'meeting') && 
+                        finalTranscript.trim() !== '') {
+                        processSpeakerSegment(finalTranscript);
+                    }
                 };
 
                 recognition.onerror = function(event) {
                     console.error('Speech recognition error:', event.error);
                     statusText.textContent = 'Error: ' + event.error;
-                    stopRecording();
+                    
+                    // If using hybrid mode, fall back to MediaRecorder
+                    if (document.getElementById('transcription-method').value === 'hybrid') {
+                        startMediaRecorder();
+                    } else {
+                        stopRecording();
+                    }
                 };
 
                 recognition.onend = function() {
@@ -599,44 +951,178 @@
                 
                 return true;
             } else {
-                // Browser doesn't support speech recognition
-                startRecordingBtn.disabled = true;
-                statusText.textContent = 'Speech recognition not supported in this browser.';
-                transcriptText.textContent = 'Your browser does not support the Web Speech API. Please try using Chrome.';
                 return false;
             }
         }
 
-        // Initialize speech recognition if available
-        const speechRecognitionAvailable = initSpeechRecognition();
+        // Initialize MediaRecorder (fallback method)
+        async function initMediaRecorder() {
+            try {
+                const constraints = { audio: true, video: false };
+                audioStream = await navigator.mediaDevices.getUserMedia(constraints);
+                
+                // Create MediaRecorder instance
+                recorder = new MediaRecorder(audioStream);
+                
+                // Handle data available event
+                recorder.ondataavailable = function(e) {
+                    if (e.data.size > 0) {
+                        audioChunks.push(e.data);
+                    }
+                    
+                    // For continuous processing, we can process in chunks
+                    // This is a simple implementation; in a real app, you'd send this to a server
+                    if (audioChunks.length > 5) {
+                        // This would normally be sent to a server for processing
+                        console.log('Audio chunk collected, would normally send to server');
+                        
+                        // Simulate transcription with a simple message
+                        const simulatedTranscript = "This is simulated transcription. In a real application, the audio would be sent to a server for processing.";
+                        transcript += simulatedTranscript + " ";
+                        transcriptText.innerHTML = transcript;
+                        
+                        // Generate notes based on the simulation
+                        if (document.getElementById('auto-generate').checked) {
+                            generateNotes();
+                        }
+                    }
+                };
+                
+                // Handle recorder stop event
+                recorder.onstop = function() {
+                    // In a real app, you would send the complete audio to the server for processing
+                    console.log('Recording stopped, would normally process complete audio');
+                    
+                    // Simulate final transcription
+                    const finalSimulation = "This is the final simulated transcription. In a production app, the complete audio would be processed on the server.";
+                    transcript += finalSimulation;
+                    transcriptText.innerHTML = transcript;
+                    
+                    // Generate final notes
+                    generateNotes(true);
+                };
+                
+                return true;
+            } catch (err) {
+                console.error('Error initializing MediaRecorder:', err);
+                statusText.textContent = 'Error: Could not access microphone. ' + err.message;
+                return false;
+            }
+        }
 
-        // Start recording
-        startRecordingBtn.addEventListener('click', function() {
-            if (!isRecording && speechRecognitionAvailable) {
+        // Start MediaRecorder (fallback method)
+        function startMediaRecorder() {
+            if (recorder && recorder.state === 'inactive') {
+                audioChunks = [];
+                recorder.start(5000); // Collect data in 5-second chunks
+                isRecording = true;
+                updateRecordingUI(true);
+                statusText.textContent = 'Recording using Audio API (fallback method)...';
+            } else {
+                // If recorder isn't initialized, try to initialize it
+                initMediaRecorder().then(success => {
+                    if (success) {
+                        startMediaRecorder();
+                    }
+                });
+            }
+        }
+
+        // Start recording based on selected method
+        async function startRecording() {
+            const method = document.getElementById('transcription-method').value;
+            
+            if (method === 'webspeech' || method === 'hybrid') {
+                // Try Web Speech API first
+                if (!recognition) {
+                    initSpeechRecognition();
+                }
+                
+                if (recognition) {
+                    try {
+                        recognition.lang = document.getElementById('language-select').value;
+                        recognition.start();
+                        return;
+                    } catch (error) {
+                        console.error('Error starting speech recognition:', error);
+                        
+                        // If hybrid mode, fall back to MediaRecorder
+                        if (method === 'hybrid') {
+                            startMediaRecorder();
+                            return;
+                        }
+                    }
+                } else if (method === 'hybrid') {
+                    // If Web Speech not available but hybrid selected, use MediaRecorder
+                    startMediaRecorder();
+                    return;
+                }
+            } else if (method === 'recorder') {
+                // Use MediaRecorder directly
+                startMediaRecorder();
+                return;
+            }
+            
+            // If we get here, no method could be started
+            statusText.textContent = 'Could not start recording with any available method';
+        }
+
+        // Stop recording for all methods
+        function stopRecording() {
+            isRecording = false;
+            updateRecordingUI(false);
+            
+            // Stop Web Speech API if active
+            if (recognition) {
                 try {
-                    recognition.lang = document.getElementById('language-select').value;
-                    recognition.start();
-                } catch (error) {
-                    console.error('Error starting recognition:', error);
+                    recognition.stop();
+                } catch (e) {
+                    console.error('Error stopping recognition:', e);
                 }
             }
-        });
+            
+            // Stop MediaRecorder if active
+            if (recorder && recorder.state === 'recording') {
+                recorder.stop();
+            }
+            
+            // Stop any audio streams
+            if (audioStream) {
+                audioStream.getTracks().forEach(track => track.stop());
+                audioStream = null;
+            }
+            
+            // Generate final notes
+            generateNotes(true);
+        }
 
-        // Stop recording
-        stopRecordingBtn.addEventListener('click', stopRecording);
-
-        function stopRecording() {
-            if (isRecording && recognition) {
-                recognition.stop();
-                isRecording = false;
+        // Update the UI when recording state changes
+        function updateRecordingUI(isActive) {
+            if (isActive) {
+                statusIndicator.classList.add('active');
+                statusText.textContent = 'Recording...';
+                transcriptText.textContent = transcript || 'Listening...';
+                startRecordingBtn.classList.add('btn-recording');
+                startRecordingBtn.innerHTML = '<i class="fas fa-microphone"></i> Recording...';
+                stopRecordingBtn.disabled = false;
+                
+                // Disable mode switching during recording
+                modeBtns.forEach(btn => {
+                    btn.style.pointerEvents = 'none';
+                    btn.style.opacity = '0.5';
+                });
+            } else {
                 statusIndicator.classList.remove('active');
                 statusText.textContent = 'Recording stopped';
                 startRecordingBtn.classList.remove('btn-recording');
                 startRecordingBtn.innerHTML = '<i class="fas fa-play"></i> Start Recording';
                 stopRecordingBtn.disabled = true;
-
-                // Generate final notes
-                generateNotes(true);
+                
+                // Re-enable mode switching
+                modeBtns.forEach(btn => {
+                    btn.style.pointerEvents = 'auto';
+                    btn.style.opacity = '1';
+                });
             }
         }
 
@@ -651,92 +1137,225 @@
                 let highlightTerms = document.getElementById('highlight-terms').checked;
                 let notesStyle = document.getElementById('notes-style').value;
                 
-                // This would be replaced with actual AI processing in a real app
-                const formattedNotes = processTranscriptToNotes(transcript, notesStyle, highlightTerms);
+                // Process transcript based on the current mode
+                const formattedNotes = processTranscriptToNotes(transcript, notesStyle, highlightTerms, currentMode);
                 notesText.innerHTML = formattedNotes;
                 loadingIndicator.style.display = 'none';
             }, 1500);
         }
 
-        // Process transcript to formatted notes (simplified simulation)
-        function processTranscriptToNotes(text, style, highlight) {
+        // Process transcript to formatted notes based on the selected mode
+        function processTranscriptToNotes(text, style, highlight, mode) {
             if (!text || text.trim() === '') {
                 return '<p>Start recording to generate notes.</p>';
             }
 
-            // This is a simplistic simulation. In a real app, this would be handled by an AI service
-            
             // Extract a fake title from the first sentence
             const firstSentenceEnd = text.indexOf('.');
             let title = firstSentenceEnd > 0 ? 
                         text.substring(0, firstSentenceEnd > 30 ? 30 : firstSentenceEnd).trim() : 
-                        "Lecture Notes";
-            if (title.length < 10) title = "Lecture Notes";
+                        mode.charAt(0).toUpperCase() + mode.slice(1) + " Notes";
+            if (title.length < 10) title = mode.charAt(0).toUpperCase() + mode.slice(1) + " Notes";
             
             let notes = '';
             
-            // Create a basic structure based on notes style
-            switch (style) {
-                case 'concise':
-                    notes = `<h3>${title}</h3>
-                    <p>Key points:</p>
-                    <ul>
-                        <li>The lecture discusses ${title.toLowerCase()} and its implications.</li>
-                        <li>Several important concepts are introduced including theoretical frameworks.</li>
-                        <li>Methods and applications are explored in detail.</li>
-                    </ul>`;
+            // Create a basic structure based on mode and style
+            switch (mode) {
+                case 'lecture':
+                    if (style === 'concise') {
+                        notes = `<h3>${title}</h3>
+                        <p>Key points:</p>
+                        <ul>
+                            <li>The lecture discusses ${title.toLowerCase()} and its implications.</li>
+                            <li>Several important concepts are introduced including theoretical frameworks.</li>
+                            <li>Methods and applications are explored in detail.</li>
+                        </ul>`;
+                    } else if (style === 'bullet-points') {
+                        notes = `<h3>${title}</h3>
+                        <ul>
+                            <li>Introduction to the topic</li>
+                            <li>Theoretical background</li>
+                            <li>Main concepts:
+                                <ul>
+                                    <li>Primary elements</li>
+                                    <li>Secondary factors</li>
+                                    <li>Relationships between components</li>
+                                </ul>
+                            </li>
+                            <li>Applications and examples</li>
+                            <li>Summary of key takeaways</li>
+                        </ul>`;
+                    } else if (style === 'question-answer') {
+                        notes = `<h3>${title}</h3>
+                        <p><strong>Q: What is the main topic of the lecture?</strong></p>
+                        <p>A: The lecture focuses on ${title.toLowerCase()}.</p>
+                        <p><strong>Q: What are the key components discussed?</strong></p>
+                        <p>A: The lecture covers theoretical frameworks, methodologies, and practical applications.</p>
+                        <p><strong>Q: How does this relate to the broader field?</strong></p>
+                        <p>A: This topic connects to larger concepts within the discipline and has real-world implications.</p>`;
+                    } else { // comprehensive
+                        notes = `<h3>${title}</h3>
+                        <p>The lecture begins with an introduction to ${title.toLowerCase()}, establishing the context and importance of the topic. The speaker presents several key concepts that form the foundation of the discussion.</p>
+                        <h4>Key Concepts</h4>
+                        <ul>
+                            <li>Theoretical framework and background</li>
+                            <li>Methodological approaches</li>
+                            <li>Practical applications</li>
+                        </ul>
+                        <h4>Important Relationships</h4>
+                        <p>The relationships between these concepts are explored, with emphasis on how they interact in various contexts.</p>
+                        <h4>Examples & Applications</h4>
+                        <p>Several examples are provided to illustrate the practical implementation of these ideas.</p>
+                        <h4>Conclusion</h4>
+                        <p>The lecture concludes by summarizing the key points and suggesting future directions for exploration.</p>`;
+                    }
                     break;
                     
-                case 'bullet-points':
-                    notes = `<h3>${title}</h3>
-                    <ul>
-                        <li>Introduction to the topic</li>
-                        <li>Theoretical background</li>
-                        <li>Main concepts:
-                            <ul>
-                                <li>Primary elements</li>
-                                <li>Secondary factors</li>
-                                <li>Relationships between components</li>
-                            </ul>
-                        </li>
-                        <li>Applications and examples</li>
-                        <li>Summary of key takeaways</li>
-                    </ul>`;
+                case 'discussion':
+                    if (style === 'concise') {
+                        notes = `<h3>${title}</h3>
+                        <p>Main discussion points:</p>
+                        <ul>
+                            <li>Multiple perspectives were shared on the central topic.</li>
+                            <li>Key questions raised included methodology and implementation concerns.</li>
+                            <li>Areas of agreement and disagreement were identified.</li>
+                        </ul>`;
+                    } else if (style === 'bullet-points') {
+                        notes = `<h3>${title}</h3>
+                        <ul>
+                            <li>Topic introduction</li>
+                            <li>Viewpoint 1: Supporting arguments</li>
+                            <li>Viewpoint 2: Counterarguments</li>
+                            <li>Questions raised:
+                                <ul>
+                                    <li>Methodological concerns</li>
+                                    <li>Practical implications</li>
+                                    <li>Theoretical foundations</li>
+                                </ul>
+                            </li>
+                            <li>Areas of consensus</li>
+                            <li>Unresolved points</li>
+                        </ul>`;
+                    } else if (style === 'question-answer') {
+                        notes = `<h3>${title}</h3>
+                        <p><strong>Q: What was the main topic of discussion?</strong></p>
+                        <p>A: The discussion centered on ${title.toLowerCase()}.</p>
+                        <p><strong>Q: What were the different perspectives presented?</strong></p>
+                        <p>A: Multiple viewpoints were shared, including theoretical considerations and practical applications.</p>
+                        <p><strong>Q: What questions remained unresolved?</strong></p>
+                        <p>A: Some questions about methodology and long-term implications remained open for further discussion.</p>`;
+                    } else { // comprehensive
+                        notes = `<h3>${title}</h3>
+                        <p>The discussion began with an overview of ${title.toLowerCase()}, with participants sharing their initial thoughts on the topic.</p>
+                        <h4>Different Perspectives</h4>
+                        <ul>
+                            <li>Perspective A: Focus on theoretical implications</li>
+                            <li>Perspective B: Emphasis on practical applications</li>
+                            <li>Perspective C: Consideration of ethical dimensions</li>
+                        </ul>
+                        <h4>Key Questions Raised</h4>
+                        <p>Several important questions emerged during the discussion:</p>
+                        <ul>
+                            <li>How can these ideas be implemented effectively?</li>
+                            <li>What are the potential limitations or drawbacks?</li>
+                            <li>How do these concepts relate to existing frameworks?</li>
+                        </ul>
+                        <h4>Areas of Consensus</h4>
+                        <p>Participants generally agreed on several fundamental points while acknowledging areas requiring further exploration.</p>
+                        <h4>Action Items</h4>
+                        <p>The discussion concluded with suggestions for further research and follow-up discussions.</p>`;
+                    }
                     break;
                     
-                case 'question-answer':
-                    notes = `<h3>${title}</h3>
-                    <p><strong>Q: What is the main topic of the lecture?</strong></p>
-                    <p>A: The lecture focuses on ${title.toLowerCase()}.</p>
-                    <p><strong>Q: What are the key components discussed?</strong></p>
-                    <p>A: The lecture covers theoretical frameworks, methodologies, and practical applications.</p>
-                    <p><strong>Q: How does this relate to the broader field?</strong></p>
-                    <p>A: This topic connects to larger concepts within the discipline and has real-world implications.</p>`;
+                case 'meeting':
+                    if (style === 'concise') {
+                        notes = `<h3>${title}</h3>
+                        <p>Meeting summary:</p>
+                        <ul>
+                            <li>Key updates were shared by team members.</li>
+                            <li>Decisions were made regarding project priorities and timelines.</li>
+                            <li>Action items were assigned with deadlines.</li>
+                        </ul>`;
+                    } else if (style === 'bullet-points') {
+                        notes = `<h3>${title}</h3>
+                        <ul>
+                            <li>Agenda overview</li>
+                            <li>Updates:
+                                <ul>
+                                    <li>Project status reports</li>
+                                    <li>Budget considerations</li>
+                                    <li>Timeline adjustments</li>
+                                </ul>
+                            </li>
+                            <li>Decisions made</li>
+                            <li>Action items:
+                                <ul>
+                                    <li>Task assignments</li>
+                                    <li>Deadlines set</li>
+                                    <li>Follow-up responsibilities</li>
+                                </ul>
+                            </li>
+                            <li>Next meeting details</li>
+                        </ul>`;
+                    } else if (style === 'question-answer') {
+                        notes = `<h3>${title}</h3>
+                        <p><strong>Q: What was the purpose of the meeting?</strong></p>
+                        <p>A: The meeting addressed ${title.toLowerCase()} and related project considerations.</p>
+                        <p><strong>Q: What decisions were made?</strong></p>
+                        <p>A: Decisions included project priorities, resource allocation, and timeline adjustments.</p>
+                        <p><strong>Q: What are the next steps?</strong></p>
+                        <p>A: Action items were assigned to team members with specific deadlines for completion.</p>`;
+                    } else { // comprehensive
+                        notes = `<h3>${title}</h3>
+                        <p>The meeting opened with a review of the agenda and previous action items. Participants then shared updates on their respective areas.</p>
+                        <h4>Updates</h4>
+                        <ul>
+                            <li>Project Status: Current progress and challenges</li>
+                            <li>Budget Review: Financial considerations and projections</li>
+                            <li>Timeline Assessment: Evaluation of project milestones</li>
+                        </ul>
+                        <h4>Key Discussions</h4>
+                        <p>The team discussed several important topics, weighing options and considering implications.</p>
+                        <h4>Decisions Made</h4>
+                        <ul>
+                            <li>Decision 1: Adjustment to project scope</li>
+                            <li>Decision 2: Resource allocation changes</li>
+                            <li>Decision 3: Approval of new approach</li>
+                        </ul>
+                        <h4>Action Items</h4>
+                        <ul>
+                            <li>Team Member A: Complete task X by date</li>
+                            <li>Team Member B: Research options for Y</li>
+                            <li>Team Member C: Coordinate with stakeholders on Z</li>
+                        </ul>
+                        <h4>Next Meeting</h4>
+                        <p>The next meeting is scheduled for [date/time] with a focus on [topic].</p>`;
+                    }
                     break;
-                    
-                default: // comprehensive
-                    notes = `<h3>${title}</h3>
-                    <p>The lecture begins with an introduction to ${title.toLowerCase()}, establishing the context and importance of the topic. The speaker presents several key concepts that form the foundation of the discussion.</p>
-                    <h4>Key Concepts</h4>
-                    <ul>
-                        <li>Theoretical framework and background</li>
-                        <li>Methodological approaches</li>
-                        <li>Practical applications</li>
-                    </ul>
-                    <h4>Important Relationships</h4>
-                    <p>The relationships between these concepts are explored, with emphasis on how they interact in various contexts.</p>
-                    <h4>Examples & Applications</h4>
-                    <p>Several examples are provided to illustrate the practical implementation of these ideas.</p>
-                    <h4>Conclusion</h4>
-                    <p>The lecture concludes by summarizing the key points and suggesting future directions for exploration.</p>`;
             }
             
             // Add highlighting if enabled
             if (highlight) {
-                // Identify some "key terms" from the text (this is simplified)
-                const potentialTerms = ['theory', 'concept', 'method', 'analysis', 'research', 'data', 'model', 
+                // Define key terms based on the selected mode
+                let potentialTerms = [];
+                
+                switch (mode) {
+                    case 'lecture':
+                        potentialTerms = ['theory', 'concept', 'method', 'analysis', 'research', 'data', 'model', 
                                         'framework', 'structure', 'function', 'process', 'system', 'development',
                                         'application', 'example'];
+                        break;
+                    case 'discussion':
+                        potentialTerms = ['perspective', 'viewpoint', 'argument', 'question', 'debate', 'consensus', 
+                                        'disagreement', 'evidence', 'implication', 'consideration', 'critique',
+                                        'response', 'interpretation', 'clarification'];
+                        break;
+                    case 'meeting':
+                        potentialTerms = ['agenda', 'update', 'decision', 'action item', 'deadline', 'responsibility', 
+                                        'timeline', 'budget', 'resource', 'stakeholder', 'milestone', 'objective',
+                                        'priority', 'status', 'follow-up'];
+                        break;
+                }
                 
                 // Find words that appear in both the transcript and our potential terms list
                 const termsToHighlight = potentialTerms.filter(term => 
@@ -753,10 +1372,158 @@
             return notes;
         }
 
+        // Handle speaker identification
+        function processSpeakerSegment(text) {
+            if (!speakerProfiles.length) {
+                return; // No enrolled speakers
+            }
+            
+            // In a real implementation, this would use the Eagle model to identify the speaker
+            // For this demo, we'll use a simple random assignment
+            const speakerIndex = Math.floor(Math.random() * speakerProfiles.length);
+            const speaker = speakerProfiles[speakerIndex];
+            
+            // Create a new speaker segment element
+            const speakerItem = document.createElement('li');
+            speakerItem.className = 'speaker-item';
+            speakerItem.innerHTML = `
+                <div class="speaker-avatar">${speaker.name.charAt(0).toUpperCase()}</div>
+                <div class="speaker-text">
+                    <div class="speaker-name">${speaker.name}</div>
+                    <div class="speaker-segment">${text}</div>
+                </div>
+            `;
+            
+            // Add to the speaker list
+            speakerList.appendChild(speakerItem);
+            
+            // Scroll to the bottom
+            const container = speakerList.parentElement;
+            container.scrollTop = container.scrollHeight;
+        }
+
+        // Initialize speaker recognition (simplified for this demo)
+        async function initSpeakerRecognition() {
+            // In a real implementation, this would initialize the Eagle SDK
+            // For this demo, we'll just simulate it
+            console.log('Speaker recognition initialized');
+            return true;
+        }
+
+        // Start speaker enrollment
+        async function startEnrollment() {
+            if (isEnrolling) return;
+            
+            const speakerName = document.getElementById('speaker-name').value.trim();
+            if (!speakerName) {
+                alert('Please enter a speaker name');
+                return;
+            }
+            
+            // Reset progress
+            currentEnrollmentPercentage = 0;
+            enrollmentProgress.style.width = '0%';
+            enrollmentStatus.textContent = 'Starting enrollment...';
+            
+            // In a real implementation, this would use the Eagle SDK
+            // For this demo, we'll simulate enrollment
+            isEnrolling = true;
+            updateEnrollmentUI(true);
+            
+            // Simulate enrollment progress
+            const enrollmentInterval = setInterval(() => {
+                currentEnrollmentPercentage += 10;
+                if (currentEnrollmentPercentage > 100) {
+                    currentEnrollmentPercentage = 100;
+                    clearInterval(enrollmentInterval);
+                    enrollmentStatus.textContent = 'Enrollment complete!';
+                    updateEnrollmentUI(false);
+                    isEnrolling = false;
+                    saveProfileBtn.disabled = false;
+                }
+                
+                enrollmentProgress.style.width = currentEnrollmentPercentage + '%';
+                enrollmentStatus.textContent = `Enrollment progress: ${currentEnrollmentPercentage}%`;
+            }, 500);
+        }
+
+        // Stop speaker enrollment
+        function stopEnrollment() {
+            if (!isEnrolling) return;
+            
+            isEnrolling = false;
+            updateEnrollmentUI(false);
+            enrollmentStatus.textContent = 'Enrollment stopped at ' + currentEnrollmentPercentage + '%';
+            
+            if (currentEnrollmentPercentage >= 100) {
+                saveProfileBtn.disabled = false;
+            }
+        }
+
+        // Update enrollment UI
+        function updateEnrollmentUI(isActive) {
+            if (isActive) {
+                startEnrollmentBtn.disabled = true;
+                stopEnrollmentBtn.disabled = false;
+                document.getElementById('speaker-name').disabled = true;
+            } else {
+                startEnrollmentBtn.disabled = false;
+                stopEnrollmentBtn.disabled = true;
+                document.getElementById('speaker-name').disabled = false;
+            }
+        }
+
+        // Save speaker profile
+        function saveProfile() {
+            const speakerName = document.getElementById('speaker-name').value.trim();
+            if (!speakerName || currentEnrollmentPercentage < 100) return;
+            
+            // Create a simplified profile for the demo
+            const profile = {
+                name: speakerName,
+                // In a real implementation, this would contain the actual speaker profile data
+                data: { /* Would contain profile data in a real implementation */ }
+            };
+            
+            // Add to profiles
+            speakerProfiles.push(profile);
+            
+            // Add to enrolled speakers list
+            const speakerItem = document.createElement('li');
+            speakerItem.className = 'speaker-item';
+            speakerItem.innerHTML = `
+                <div class="speaker-avatar">${speakerName.charAt(0).toUpperCase()}</div>
+                <div class="speaker-text">
+                    <div class="speaker-name">${speakerName}</div>
+                    <div class="speaker-segment">Speaker profile saved</div>
+                </div>
+            `;
+            enrolledSpeakersList.appendChild(speakerItem);
+            
+            // Reset enrollment
+            currentEnrollmentPercentage = 0;
+            enrollmentProgress.style.width = '0%';
+            enrollmentStatus.textContent = 'Ready to enroll';
+            document.getElementById('speaker-name').value = '';
+            saveProfileBtn.disabled = true;
+            
+            // Update UI based on speaker profiles
+            updateSpeakerUI();
+        }
+
+        // Update UI based on speaker profiles
+        function updateSpeakerUI() {
+            if (speakerProfiles.length > 0 && (currentMode === 'discussion' || currentMode === 'meeting')) {
+                speakerSection.style.display = 'block';
+            } else {
+                speakerSection.style.display = 'none';
+            }
+        }
+
         // Download notes
         downloadNotesBtn.addEventListener('click', function() {
             const notesContent = notesText.innerHTML;
-            const blob = new Blob([`<html><head><title>Lecture Notes</title><style>
+            const blob = new Blob([`<html><head><title>LectureNotes - ${currentMode.charAt(0).toUpperCase() + currentMode.slice(1)} Notes</title><style>
                 body { font-family: Arial, sans-serif; line-height: 1.6; max-width: 800px; margin: 0 auto; padding: 20px; }
                 h3 { color: #4F46E5; }
                 .highlight { background-color: #EEF2FF; color: #4F46E5; padding: 0 3px; border-radius: 3px; }
@@ -765,7 +1532,7 @@
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = 'lecture-notes.html';
+            a.download = `${currentMode}-notes.html`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
@@ -791,37 +1558,3 @@
                 // For this demo, we'll just keep it simple
             });
         });
-
-        // Show/hide settings section
-        settingsButton.addEventListener('click', function() {
-            const settingsSection = document.querySelector('.settings-section');
-            settingsSection.style.display = settingsSection.style.display === 'none' ? 'block' : 'none';
-        });
-
-        // Dark mode toggle
-        themeToggle.addEventListener('click', function() {
-            document.body.classList.toggle('dark-mode');
-            const icon = themeToggle.querySelector('i');
-            if (icon.classList.contains('fa-moon')) {
-                icon.classList.remove('fa-moon');
-                icon.classList.add('fa-sun');
-                themeToggle.querySelector('span').textContent = 'Light Mode';
-            } else {
-                icon.classList.remove('fa-sun');
-                icon.classList.add('fa-moon');
-                themeToggle.querySelector('span').textContent = 'Dark Mode';
-            }
-        });
-
-        // Language select change
-        document.getElementById('language-select').addEventListener('change', function() {
-            if (recognition) {
-                recognition.lang = this.value;
-            }
-        });
-
-        // Initialize settings display
-        document.querySelector('.settings-section').style.display = 'none';
-    </script>
-</body>
-</html>
